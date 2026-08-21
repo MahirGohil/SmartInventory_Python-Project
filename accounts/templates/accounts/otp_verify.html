@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP - Smart Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+    .form-card {
+        background: #ffffff;
+        padding: 35px 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+        margin: 20px auto;
+    }
+    .form-card h2 {
+        margin-bottom: 10px;
+        color: #333333;
+    }
+    .subtitle {
+        font-size: 0.9rem;
+        color: #666666;
+        margin-bottom: 20px;
+    }
+    .otp-inputs {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 20px 0;
+    }
+    .otp-digit {
+        width: 48px;
+        height: 52px;
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        border: 2px solid #cccccc;
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .otp-digit:focus {
+        border-color: #007bff;
+    }
+    .timer-container {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #dc3545;
+        margin-bottom: 20px;
+    }
+    .error-text {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 6px;
+        margin-bottom: 15px;
+    }
+    .btn-submit {
+        width: 100%;
+        background-color: #007bff;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1.05rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 15px;
+    }
+    .btn-submit:hover {
+        background-color: #0056b3;
+    }
+    .btn-resend {
+        background: none;
+        border: none;
+        color: #007bff;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+    .btn-resend:hover {
+        color: #0056b3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2>OTP Verification</h2>
+    <p class="subtitle">Enter the 6-digit OTP sent to <strong>{{ user_email }}</strong></p>
+
+    <form id="otp-form" method="POST" action="{% url 'accounts:verify_otp' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="code" id="hidden-otp-code">
+
+        <div class="otp-inputs">
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric" autofocus>
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric">
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric">
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric">
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric">
+            <input type="text" maxlength="1" class="otp-digit" pattern="\d*" inputmode="numeric">
+        </div>
+
+        {% if form.code.errors %}
+            <div class="error-text">
+                {% for error in form.code.errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="timer-container">
+            Time remaining: <span id="countdown">01:00</span>
+        </div>
+
+        <button type="submit" class="btn-submit">Verify OTP</button>
+    </form>
+
+    <form method="POST" action="{% url 'accounts:verify_otp' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="resend">
+        <button type="submit" class="btn-resend">Resend OTP</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const inputs = document.querySelectorAll(".otp-digit");
+        const hiddenCode = document.getElementById("hidden-otp-code");
+        const otpForm = document.getElementById("otp-form");
+
+        inputs.forEach((input, index) => {
+            input.addEventListener("input", function () {
+                if (this.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "Backspace" && !this.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+
+            input.addEventListener("paste", function (e) {
+                e.preventDefault();
+                const pastedData = (e.clipboardData || window.clipboardData).getData("text").trim();
+                if (/^\d{6}$/.test(pastedData)) {
+                    pastedData.split("").forEach((char, i) => {
+                        if (inputs[i]) inputs[i].value = char;
+                    });
+                    inputs[inputs.length - 1].focus();
+                }
+            });
+        });
+
+        otpForm.addEventListener("submit", function () {
+            let code = "";
+            inputs.forEach(input => code += input.value.trim());
+            hiddenCode.value = code;
+        });
+
+        let timeLeft = 60;
+        const timerDisplay = document.getElementById("countdown");
+        const timerInterval = setInterval(function () {
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerDisplay.textContent = "00:00 (Expired)";
+            } else {
+                timeLeft--;
+                const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+                const seconds = String(timeLeft % 60).padStart(2, '0');
+                timerDisplay.textContent = `${minutes}:${seconds}`;
+            }
+        }, 1000);
+    });
+</script>
+{% endblock %}

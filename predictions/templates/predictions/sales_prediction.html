@@ -1,0 +1,345 @@
+{% extends "adminpanel/dashboard.html" %}
+{% load static %}
+
+{% block title %}Sales Prediction - Smart Inventory Admin{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .prediction-container {
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .prediction-title-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .prediction-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+    .back-to-shop-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .back-to-shop-btn:hover { background-color: #0d0d1a; }
+    .charts-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 30px;
+    }
+    @media (max-width: 800px) {
+        .charts-row { grid-template-columns: 1fr; }
+    }
+    .chart-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        padding: 24px;
+    }
+    .chart-card h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #444;
+        margin-bottom: 16px;
+    }
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+    }
+    .forecast-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 14px;
+        padding: 32px 28px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        flex-wrap: wrap;
+    }
+    .forecast-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        opacity: 0.8;
+        margin-bottom: 6px;
+    }
+    .forecast-value {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #FFD700;
+        line-height: 1;
+    }
+    .forecast-week {
+        font-size: 0.85rem;
+        opacity: 0.65;
+        margin-top: 8px;
+    }
+    .forecast-badge {
+        display: inline-block;
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background-color: rgba(255,215,0,0.2);
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+    }
+    .source-note {
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 16px;
+        text-align: right;
+    }
+    /* Empty state */
+    .empty-state-banner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        color: #888;
+        font-size: 0.95rem;
+        text-align: center;
+        padding: 20px;
+        border: 2px dashed #dee2e6;
+    }
+    .empty-state-banner .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
+    .empty-state-banner strong { color: #555; display: block; margin-bottom: 6px; }
+</style>
+{% endblock %}
+
+{# ── BUG 4 FIX: Override admin_nav — keep brand/nav/profile, remove search bar ── #}
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+    <!-- Right: Profile Icon (no search bar on this page) -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="prediction-container">
+
+    {# ── BUG 5 FIX: Title row with Back to Shop link ── #}
+    <div class="prediction-title-row">
+        <h1 class="prediction-title">📈 Sales Prediction</h1>
+        <a href="{% url 'catalog:shop' %}" class="back-to-shop-btn">← Back to Shop</a>
+    </div>
+
+    {# ── BUG 1 FIX: Empty state if no data at all ── #}
+    {% if not monthly_sales or predicted_sales == 0 and not weekly_sales %}
+        <div class="empty-state-banner" style="margin-bottom: 28px;">
+            <div class="empty-icon">📊</div>
+            <strong>Not enough sales data yet to generate a prediction.</strong>
+            Place some orders first, then return here to see forecasts.
+        </div>
+    {% else %}
+        <!-- Forecast Highlight Card -->
+        <div class="forecast-card" style="margin-bottom: 28px;">
+            <div>
+                <div class="forecast-label">Predicted Sales — Next Week</div>
+                <div class="forecast-value">₹{{ predicted_sales }}</div>
+                <div class="forecast-week">Week starting {{ next_week_start|date:"M d, Y" }}</div>
+            </div>
+            <div>
+                <span class="forecast-badge">Weighted Moving Average</span>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Charts Row: Monthly + Weekly -->
+    <div class="charts-row">
+        <!-- Monthly Sales Chart -->
+        <div class="chart-card">
+            <h3>Monthly Sales — {{ year }}</h3>
+            {% if has_monthly_data %}
+                <div class="chart-wrapper">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            {% else %}
+                <div class="empty-state-banner">
+                    <div class="empty-icon">📅</div>
+                    <strong>No monthly sales data for {{ year }}.</strong>
+                    Data will appear here once orders are placed.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Weekly Sales Chart (Current Month) -->
+        <div class="chart-card">
+            <h3>Weekly Sales — {{ month }} {{ year }}</h3>
+            {% if has_weekly_data %}
+                <div class="chart-wrapper">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            {% else %}
+                <div class="empty-state-banner">
+                    <div class="empty-icon">📆</div>
+                    <strong>No weekly sales data for {{ month }} {{ year }}.</strong>
+                    Data will appear here once orders are placed this month.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="source-note">
+        Data source: {{ prediction_source }} &nbsp;|&nbsp;
+        Algorithm: Weighted Moving Average (last 4–8 weeks)
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Chart.js vendored locally v4.4.4 UMD #}
+<script
+    src="{% static 'js/vendor/chart.umd.min.js' %}"
+    onerror="console.error('Chart.js failed to load from local static assets. Charts will not render.')">
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // BUG 1 FIX: Guard against Chart.js not loading (CDN failure)
+    if (typeof Chart === "undefined") {
+        console.error("Chart.js is not available — charts cannot be rendered. CDN may have failed to load.");
+        return;
+    }
+
+    const COLORS = {
+        bar: "rgba(0, 123, 255, 0.75)",
+        barBorder: "rgba(0, 123, 255, 1)",
+        line: "rgba(40, 167, 69, 0.85)",
+        lineFill: "rgba(40, 167, 69, 0.12)",
+        lineBorder: "rgba(40, 167, 69, 1)",
+    };
+
+    // ── Monthly Sales Bar Chart ───────────────────────────────────────────────
+    // BUG 1 FIX: Only render chart if canvas exists (shown only when has_monthly_data)
+    const monthlyCanvas = document.getElementById("monthlyChart");
+    if (monthlyCanvas) {
+        // {{ monthly_labels|safe }} and {{ monthly_totals|safe }} render as valid
+        // JS arrays because services.get_monthly_sales() always returns plain Python
+        // lists of strings/floats — safe to pass through the |safe filter.
+        const monthlyLabels = {{ monthly_labels|safe }};
+        const monthlyTotals = {{ monthly_totals|safe }};
+
+        new Chart(monthlyCanvas, {
+            type: "bar",
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: "Sales (₹)",
+                    data: monthlyTotals,
+                    backgroundColor: COLORS.bar,
+                    borderColor: COLORS.barBorder,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `₹${ctx.parsed.y.toLocaleString("en-IN")}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `₹${v.toLocaleString("en-IN")}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Weekly Sales Line Chart ────────────────────────────────────────────────
+    const weeklyCanvas = document.getElementById("weeklyChart");
+    if (weeklyCanvas) {
+        const weeklyLabels = {{ weekly_labels|safe }};
+        const weeklyTotals = {{ weekly_totals|safe }};
+
+        new Chart(weeklyCanvas, {
+            type: "line",
+            data: {
+                labels: weeklyLabels,
+                datasets: [{
+                    label: "Sales (₹)",
+                    data: weeklyTotals,
+                    borderColor: COLORS.lineBorder,
+                    backgroundColor: COLORS.lineFill,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 5,
+                    pointBackgroundColor: COLORS.lineBorder,
+                    borderWidth: 2.5,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `₹${ctx.parsed.y.toLocaleString("en-IN")}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => `₹${v.toLocaleString("en-IN")}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

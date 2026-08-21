@@ -1,0 +1,45 @@
+# Smart Inventory — Git Ignore Rules
+
+# ── Secrets & Environment ──────────────────────────────────────────────────────
+.env
+*.env
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Virtual Environments ───────────────────────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+
+# ── Django Local Artifacts ────────────────────────────────────────────────────
+db.sqlite3
+staticfiles/
+media/
+
+# ── Distribution / Build ───────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ── IDE & OS ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/

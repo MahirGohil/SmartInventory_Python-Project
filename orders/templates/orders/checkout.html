@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Checkout - Smart Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    .checkout-container {
+        max-width: 750px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .checkout-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 35px;
+    }
+    .checkout-header {
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+    }
+    .checkout-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #444;
+        font-size: 0.95rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1px solid #cccccc;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+    .form-control[readonly] {
+        background-color: #e9ecef;
+        color: #495057;
+        cursor: not-allowed;
+    }
+    .error-text {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 4px;
+    }
+    .payment-radio-group {
+        display: flex;
+        gap: 25px;
+        margin-top: 8px;
+    }
+    .payment-radio-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #333;
+        cursor: pointer;
+    }
+    .summary-box {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 25px 0;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.95rem;
+        color: #555;
+    }
+    .summary-row.total {
+        border-top: 2px solid #ddd;
+        padding-top: 10px;
+        margin-top: 8px;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #333;
+    }
+    .btn-proceed {
+        width: 100%;
+        background-color: #28a745;
+        color: white;
+        padding: 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color 0.2s, opacity 0.2s;
+    }
+    .btn-proceed:hover:not(:disabled) {
+        background-color: #218838;
+    }
+    .btn-proceed:disabled {
+        background-color: #6c757d;
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="checkout-container">
+    <div class="checkout-card">
+        <div class="checkout-header">
+            <h1 class="checkout-title">Checkout</h1>
+        </div>
+
+        <form id="checkout-form" method="POST" action="{% url 'orders:place_order' %}" novalidate>
+            {% csrf_token %}
+
+            <!-- Name -->
+            <div class="form-group">
+                <label for="id_receiver_name">Receiver Name *</label>
+                {{ form.receiver_name }}
+                {% if form.receiver_name.errors %}
+                    <div class="error-text">{{ form.receiver_name.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Address Field (spec §5.1 Google Places Autocomplete target) -->
+            <div class="form-group">
+                <label for="id_formatted_address">Delivery Address *</label>
+                {{ form.formatted_address }}
+                {% if form.formatted_address.errors %}
+                    <div class="error-text">{{ form.formatted_address.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- User Mobile Number (Auto-filled from profile, read-only display) -->
+            <div class="form-group">
+                <label for="id_user_mobile">User Mobile Number (Registered Account)</label>
+                <input type="text" id="id_user_mobile" value="{{ user_mobile }}" class="form-control" readonly>
+            </div>
+
+            <!-- Receiver Mobile Number -->
+            <div class="form-group">
+                <label for="id_receiver_mobile">Receiver Mobile Number *</label>
+                {{ form.receiver_mobile }}
+                {% if form.receiver_mobile.errors %}
+                    <div class="error-text">{{ form.receiver_mobile.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Delivery Time (Auto-filled from session delivery_eta, read-only display) -->
+            <div class="form-group">
+                <label for="id_delivery_time">Estimated Delivery Window</label>
+                <input type="text" id="id_delivery_time" value="Today, {{ delivery_eta|date:'h:i A' }} – {{ delivery_eta|date:'h:i A' }}" class="form-control" readonly>
+            </div>
+
+            <!-- Payment Method Radio Buttons -->
+            <div class="form-group">
+                <label>Payment Method *</label>
+                <div class="payment-radio-group">
+                    {% for radio in form.payment_method %}
+                        <label class="payment-radio-option">
+                            {{ radio.tag }} {{ radio.choice_label }}
+                        </label>
+                    {% endfor %}
+                </div>
+                {% if form.payment_method.errors %}
+                    <div class="error-text">{{ form.payment_method.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Summary Box -->
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span>Subtotal ({{ totals.item_count }} items)</span>
+                    <span>₹{{ totals.subtotal }}</span>
+                </div>
+                {% if totals.discount_amount > 0 %}
+                    <div class="summary-row" style="color: #28a745;">
+                        <span>First Order Discount</span>
+                        <span>-₹{{ totals.discount_amount }}</span>
+                    </div>
+                {% endif %}
+                <div class="summary-row">
+                    <span>Delivery Charge</span>
+                    <span>{% if totals.is_free_delivery %}FREE{% else %}₹{{ totals.delivery_charge }}{% endif %}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Amount Payable</span>
+                    <span>₹{{ totals.total_amount }}</span>
+                </div>
+            </div>
+
+            <!-- Green Proceed Button (disabled until every required field is validly filled) -->
+            <button type="submit" id="btn-proceed" class="btn-proceed" disabled>Proceed to Pay</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'orders/checkout.js' %}"></script>
+{% endblock %}

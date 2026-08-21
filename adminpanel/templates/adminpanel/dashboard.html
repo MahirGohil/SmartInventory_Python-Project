@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard - Smart Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-layout {
+        min-height: 100vh;
+        background-color: #f0f2f5;
+    }
+    /* ── Admin Top Bar ── */
+    .admin-topbar {
+        background-color: #1a1a2e;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .admin-nav-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .brand-badge {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #FFD700;
+        margin-right: 12px;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+    .admin-nav-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s, color 0.2s;
+        white-space: nowrap;
+    }
+    .nav-btn-manage      { background-color: #007bff; color: white; }
+    .nav-btn-manage:hover { background-color: #0056b3; }
+    .nav-btn-notif       { background-color: #fd7e14; color: white; position: relative; }
+    .nav-btn-notif:hover { background-color: #e8690a; }
+    .nav-btn-sales       { background-color: #6f42c1; color: white; }
+    .nav-btn-sales:hover { background-color: #5a32a3; }
+    .nav-btn-stock       { background-color: #20c997; color: white; }
+    .nav-btn-stock:hover { background-color: #17a589; }
+
+    .notif-badge {
+        position: absolute;
+        top: -5px;
+        right: -6px;
+        background-color: #dc3545;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 900;
+        border-radius: 50%;
+        min-width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+    }
+    /* Search Bar */
+    .admin-search-form {
+        flex: 1;
+        max-width: 480px;
+        display: flex;
+    }
+    .admin-search-form input[type="text"] {
+        flex: 1;
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px 0 0 6px;
+        font-size: 0.9rem;
+        outline: none;
+    }
+    .admin-search-form button {
+        padding: 8px 14px;
+        background-color: #FFD700;
+        color: #333;
+        border: none;
+        border-radius: 0 6px 6px 0;
+        cursor: pointer;
+        font-weight: 700;
+    }
+    .admin-search-form button:hover { background-color: #e6c200; }
+    .profile-icon {
+        width: 38px;
+        height: 38px;
+        background-color: #FFD700;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.95rem;
+        color: #333;
+        text-decoration: none;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .profile-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+    /* ── Dashboard Content ── */
+    .dashboard-content {
+        max-width: 1100px;
+        margin: 35px auto;
+        padding: 0 20px;
+    }
+    .dashboard-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 28px;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-bottom: 35px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-left: 5px solid #007bff;
+    }
+    .stat-card.orange { border-color: #fd7e14; }
+    .stat-card.red    { border-color: #dc3545; }
+    .stat-card.green  { border-color: #28a745; }
+    .stat-label { font-size: 0.85rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 2.4rem; font-weight: 800; color: #333; line-height: 1; }
+    .quick-actions {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .quick-action-btn {
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 0.15s, box-shadow 0.15s;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .quick-action-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(0,0,0,0.15); }
+    .qab-blue   { background-color: #007bff; color: white; }
+    .qab-yellow { background-color: #FFD700; color: #333; }
+    .qab-orange { background-color: #fd7e14; color: white; }
+</style>
+{% endblock %}
+
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+
+    <!-- Center: Search Bar -->
+    <form class="admin-search-form" method="GET" action="{% url 'adminpanel:manage_products' %}">
+        <input type="text" name="q" placeholder="Search products..." value="{{ search_query|default:'' }}">
+        <button type="submit">🔍</button>
+    </form>
+
+    <!-- Right: Profile Icon -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    <h1 class="dashboard-title">Dashboard</h1>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Products</div>
+            <div class="stat-value">{{ total_products }}</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-label">Low Stock Alerts</div>
+            <div class="stat-value">{{ low_stock_count }}</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-label">Expiry Alerts</div>
+            <div class="stat-value">{{ expiry_count }}</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Unread Notifications</div>
+            <div class="stat-value">{{ unread_notifications }}</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <a href="{% url 'adminpanel:add_product' %}" class="quick-action-btn qab-yellow">+ Add New Product</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="quick-action-btn qab-blue">Manage Products</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="quick-action-btn qab-orange">View Notifications</a>
+    </div>
+</div>
+{% endblock %}

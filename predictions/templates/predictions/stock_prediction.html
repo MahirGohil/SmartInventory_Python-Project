@@ -1,0 +1,215 @@
+{% extends "adminpanel/dashboard.html" %}
+{% load static %}
+
+{% block title %}Stock Prediction - Smart Inventory Admin{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .prediction-container {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .prediction-title-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .prediction-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+    .back-to-shop-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .back-to-shop-btn:hover { background-color: #0d0d1a; }
+    .forecast-header-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 14px;
+        padding: 24px 28px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+    }
+    .forecast-header-card h2 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    .forecast-header-card .week-label {
+        font-size: 0.85rem;
+        opacity: 0.7;
+    }
+    .forecast-badge {
+        display: inline-block;
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background-color: rgba(32,201,151,0.2);
+        color: #20c997;
+        border: 1px solid rgba(32,201,151,0.35);
+    }
+    .stock-table-wrap {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        overflow: hidden;
+    }
+    .stock-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .stock-table th {
+        background-color: #1a1a2e;
+        color: #FFD700;
+        padding: 14px 18px;
+        text-align: left;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .stock-table th:last-child { text-align: center; }
+    .stock-table td {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.92rem;
+        color: #444;
+    }
+    .stock-table td:last-child { text-align: center; }
+    .stock-table tr:last-child td { border-bottom: none; }
+    .stock-table tr:hover td { background-color: #fafafa; }
+    .product-name-cell { font-weight: 600; color: #333; }
+    .qty-pill {
+        display: inline-block;
+        padding: 4px 16px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        background-color: #e7f5ff;
+        color: #1864ab;
+        min-width: 50px;
+    }
+    /* BUG 1 FIX: Enhanced empty state */
+    .empty-state-banner {
+        text-align: center;
+        padding: 60px 20px;
+        color: #888;
+        font-size: 0.95rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+    .empty-state-banner .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state-banner strong { color: #555; display: block; font-size: 1rem; margin-bottom: 8px; }
+    .source-note {
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 16px;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{# ── BUG 4 FIX: Override admin_nav — keep brand/nav/profile, remove search bar ── #}
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+    <!-- Right: Profile Icon (no search bar on this page) -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="prediction-container">
+
+    {# ── BUG 5 FIX: Title row with Back to Shop link ── #}
+    <div class="prediction-title-row">
+        <h1 class="prediction-title">📦 Stock Prediction</h1>
+        <a href="{% url 'catalog:shop' %}" class="back-to-shop-btn">← Back to Shop</a>
+    </div>
+
+    <!-- Header Card -->
+    <div class="forecast-header-card">
+        <div>
+            <h2>Predicted Restock Quantities</h2>
+            <div class="week-label">For week starting {{ next_week_start|date:"M d, Y" }}</div>
+        </div>
+        <span class="forecast-badge">Weighted Moving Average</span>
+    </div>
+
+    <!-- Stock Prediction Table -->
+    {% if stock_predictions %}
+        <div class="stock-table-wrap">
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Product Name</th>
+                        <th>Predicted Quantity Required</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sp in stock_predictions %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td class="product-name-cell">{{ sp.product.name }}</td>
+                            <td><span class="qty-pill">{{ sp.predicted_qty }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        {# ── BUG 1 FIX: Friendly empty state instead of a blank table ── #}
+        <div class="empty-state-banner">
+            <div class="empty-icon">📦</div>
+            <strong>Not enough sales data yet to generate a stock prediction.</strong>
+            Place some orders first. Once completed orders exist, the prediction
+            engine will automatically forecast next week's restock quantities here.
+        </div>
+    {% endif %}
+
+    <div class="source-note">
+        Data source: {{ prediction_source }} &nbsp;|&nbsp;
+        Algorithm: Weighted Moving Average (last 8 weeks of demand)
+    </div>
+</div>
+{% endblock %}

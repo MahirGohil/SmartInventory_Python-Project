@@ -1,0 +1,243 @@
+{% extends "adminpanel/dashboard.html" %}
+{% load static %}
+
+{% block title %}Manage Products - Smart Inventory Admin{% endblock %}
+
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+    <!-- Right: Profile Icon (no search bar on this page — search lives in the content area below) -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <h1 class="dashboard-title" style="margin-bottom:0;">Manage Products</h1>
+            {# ── BUG 5 FIX: Back to Shop link ── #}
+            <a href="{% url 'catalog:shop' %}" class="back-to-shop-btn">← Back to Shop</a>
+        </div>
+        <a href="{% url 'adminpanel:add_product' %}" class="quick-action-btn qab-yellow">+ Add Product</a>
+    </div>
+
+    {% if search_query %}
+        <p style="color:#666; margin-bottom:14px;">Showing results for <strong>"{{ search_query }}"</strong></p>
+    {% endif %}
+
+    <div style="background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.07); overflow:hidden;">
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Product ID</th>
+                    <th>Category</th>
+                    <th>Price (₹)</th>
+                    <th>Quantity</th>
+                    <th style="text-align:center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="products-table-body">
+                {% for product in products %}
+                    <tr id="product-row-{{ product.id }}">
+                        <td class="product-name-cell">{{ product.name }}</td>
+                        <td><code>{{ product.product_code }}</code></td>
+                        <td>{{ product.category.name }}</td>
+                        <td>₹{{ product.price }}</td>
+                        <td>
+                            <span class="{% if product.stock_qty <= 5 %}low-stock{% endif %}">
+                                {{ product.stock_qty }}
+                            </span>
+                        </td>
+                        <td style="text-align:center;">
+                            <div style="display:flex; gap:8px; justify-content:center;">
+                                <a href="{% url 'adminpanel:edit_product' product.id %}" class="action-btn btn-edit">Edit</a>
+                                <button
+                                    class="action-btn btn-delete"
+                                    data-product-id="{{ product.id }}"
+                                    data-product-name="{{ product.name }}"
+                                    onclick="confirmDelete({{ product.id }}, '{{ product.name|escapejs }}')"
+                                >Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align:center; padding:40px; color:#888;">
+                            No products found.
+                            <a href="{% url 'adminpanel:add_product' %}" style="color:#007bff; font-weight:600;">Add your first product</a>.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Confirm Deletion</h3>
+        <p id="delete-modal-message" style="color:#555; margin: 12px 0 20px;">Are you sure you want to remove this product?</p>
+        <div style="display:flex; gap:12px;">
+            <button class="modal-btn modal-btn-confirm" id="modal-confirm-btn">Yes, Remove</button>
+            <button class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Back to Shop button — matches admin brand scheme */
+    .back-to-shop-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .back-to-shop-btn:hover { background-color: #0d0d1a; }
+
+    /* Local search form */
+    .manage-search-form {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        max-width: 480px;
+    }
+    .manage-search-input {
+        flex: 1;
+        padding: 9px 14px;
+        border: 1.5px solid #dee2e6;
+        border-right: none;
+        border-radius: 6px 0 0 6px;
+        font-size: 0.9rem;
+        outline: none;
+        background: white;
+    }
+    .manage-search-input:focus { border-color: #007bff; }
+    .manage-search-btn {
+        padding: 9px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1.5px solid #1a1a2e;
+        border-radius: 0 6px 6px 0;
+        cursor: pointer;
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+    .manage-search-btn:hover { background-color: #0d0d1a; }
+    .manage-search-clear {
+        margin-left: 8px;
+        font-size: 0.82rem;
+        color: #888;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 4px 6px;
+    }
+    .manage-search-clear:hover { color: #dc3545; }
+
+    .product-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .product-table th {
+        background-color: #1a1a2e;
+        color: #FFD700;
+        padding: 14px 16px;
+        text-align: left;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .product-table td {
+        padding: 13px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.9rem;
+        color: #444;
+        vertical-align: middle;
+    }
+    .product-table tr:last-child td { border-bottom: none; }
+    .product-table tr:hover td { background-color: #fafafa; }
+    .low-stock { color: #dc3545; font-weight: 700; }
+    .product-name-cell { font-weight: 600; color: #333; }
+
+    .action-btn {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 5px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+        transition: background-color 0.15s;
+    }
+    .btn-edit  { background-color: #007bff; color: white; }
+    .btn-edit:hover { background-color: #0056b3; }
+    .btn-delete { background-color: #dc3545; color: white; }
+    .btn-delete:hover { background-color: #bd2130; }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        z-index: 500;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-box {
+        background: white;
+        border-radius: 12px;
+        padding: 32px 28px;
+        max-width: 420px;
+        width: 90%;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+    .modal-box h3 { font-size: 1.3rem; color: #333; margin-bottom: 6px; }
+    .modal-btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 0.95rem;
+    }
+    .modal-btn-confirm { background-color: #dc3545; color: white; }
+    .modal-btn-confirm:hover { background-color: #bd2130; }
+    .modal-btn-cancel  { background-color: #e9ecef; color: #333; }
+    .modal-btn-cancel:hover { background-color: #dee2e6; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'adminpanel/adminpanel.js' %}"></script>
+{% endblock %}

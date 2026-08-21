@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Smart Inventory{% endblock %}
+
+{# ── BUG 3 FIX: Suppress the admin nav bar on the profile page entirely.
+   The default base.html block renders Manage/Notification/Prediction links
+   for superusers; turning <body> into a flex container (see .profile-page-wrapper
+   below) was causing the nav bar and the profile card to sit side-by-side,
+   shifting the card visually to the right. Overriding this block with nothing
+   means the profile page is clean for all users — admin or regular. ── #}
+{% block admin_nav %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* BUG 3 FIX: flex centering applied to a wrapper div, NOT to body.
+       body stays in normal block flow so messages and future elements stack
+       vertically as expected. */
+    .profile-page-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding: 30px 20px;
+        box-sizing: border-box;
+    }
+    .profile-card {
+        background: #ffffff;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        padding: 30px;
+    }
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        border-bottom: 1px solid #eeeeee;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+    .avatar-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        background-color: #007bff;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        font-weight: 700;
+        border: 3px solid #e9ecef;
+        overflow: hidden;
+    }
+    .avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .upload-form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    .upload-btn-label {
+        font-size: 0.75rem;
+        color: #007bff;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+    .upload-btn-label:hover {
+        color: #0056b3;
+    }
+    .upload-submit-btn {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        display: none;
+    }
+    .user-info h2 {
+        margin: 0 0 5px 0;
+        color: #333333;
+    }
+    .user-info p {
+        margin: 0;
+        color: #666666;
+        font-size: 0.95rem;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #555555;
+    }
+    .detail-value {
+        color: #333333;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333333;
+        margin: 25px 0 15px 0;
+    }
+    .order-history-box {
+        background-color: #f8f9fa;
+        border: 1px dashed #cccccc;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        color: #777777;
+        font-size: 0.95rem;
+    }
+    /* Bottom action buttons row */
+    .profile-actions {
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .btn-logout {
+        display: block;
+        width: 100%;
+        background-color: #dc3545;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        box-sizing: border-box;
+    }
+    .btn-logout:hover {
+        background-color: #bd2130;
+    }
+    /* BUG 3 FIX: Back to Shop button — blue/neutral, consistent with profile card */
+    .btn-back-shop {
+        display: block;
+        width: 100%;
+        background-color: #007bff;
+        color: white;
+        padding: 11px;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        box-sizing: border-box;
+        transition: background-color 0.2s;
+    }
+    .btn-back-shop:hover {
+        background-color: #0056b3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# BUG 3 FIX: Wrapper div carries the flex centering, not <body> #}
+<div class="profile-page-wrapper">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="avatar-wrapper">
+                <div class="avatar">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}">
+                    {% else %}
+                        {{ user.username|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+
+                <!-- Profile Picture Upload Form -->
+                <form class="upload-form" method="POST" action="{% url 'accounts:update_profile_picture' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <label for="id_profile_picture" class="upload-btn-label">Change Photo</label>
+                    <input type="file" name="profile_picture" id="id_profile_picture" accept="image/*" style="display: none;" onchange="document.getElementById('upload-save-btn').style.display='inline-block';">
+                    <button type="submit" id="upload-save-btn" class="upload-submit-btn">Save</button>
+                </form>
+            </div>
+
+            <div class="user-info">
+                <h2>{{ user.username }}</h2>
+                <p>{{ user.email }}</p>
+            </div>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Username</span>
+            <span class="detail-value">{{ user.username }}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Mobile Number</span>
+            <span class="detail-value">{{ user.mobile_number }}</span>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Joining Date</span>
+            <span class="detail-value">{{ user.joining_date|date:"F d, Y" }}</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 25px 0 15px 0;">
+            <span class="section-title" style="margin:0;">Recent Orders</span>
+            <a href="{% url 'orders:order_history' %}" style="font-size:0.85rem; color:#007bff; font-weight:600; text-decoration:none;">View All →</a>
+        </div>
+
+        {% if order_history %}
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                {% for order in order_history %}
+                    <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:700; color:#333; font-size:0.9rem;">Order #{{ order.id }}</div>
+                            <div style="font-size:0.78rem; color:#888;">{{ order.placed_at|date:"M d, Y" }} · {{ order.get_status_display }}</div>
+                        </div>
+                        <div style="font-weight:800; color:#28a745; font-size:0.95rem;">
+                            ₹{{ order.total_amount }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="order-history-box">
+                No past orders found.
+            </div>
+        {% endif %}
+
+        {# BUG 3 FIX: Action buttons — Back to Shop above Logout ── #}
+        <div class="profile-actions">
+            <a href="{% url 'catalog:shop' %}" class="btn-back-shop">← Back to Shop</a>
+            <a href="{% url 'accounts:logout' %}" class="btn-logout">Logout</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Your Shopping Cart - Smart Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-container {
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .cart-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 30px;
+    }
+    .cart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .cart-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #333;
+    }
+    .back-link {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* Items Table */
+    .cart-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 25px;
+    }
+    .cart-table th {
+        text-align: left;
+        padding: 12px 10px;
+        background-color: #f8f9fa;
+        color: #555;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+    .cart-table td {
+        padding: 16px 10px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+    .item-name {
+        font-weight: 600;
+        color: #333;
+    }
+    .item-price {
+        color: #666;
+    }
+    .line-total {
+        font-weight: 700;
+        color: #333;
+    }
+
+    /* Stepper inside table */
+    .table-stepper {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #cccccc;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .table-stepper button {
+        background: #f8f9fa;
+        border: none;
+        padding: 4px 10px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .table-stepper button:hover { background-color: #e9ecef; }
+    .table-stepper span {
+        padding: 0 10px;
+        font-weight: 700;
+    }
+
+    /* Summary section */
+    .cart-summary {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 0.95rem;
+        color: #555;
+    }
+    .summary-row.discount {
+        color: #28a745;
+        font-weight: 600;
+    }
+    .summary-row.total {
+        border-top: 2px solid #ddd;
+        padding-top: 12px;
+        margin-top: 8px;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #333;
+    }
+    .eta-box {
+        background-color: #e7f5ff;
+        border: 1px solid #74c0fc;
+        color: #1864ab;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 25px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Action buttons */
+    .cart-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .btn-discard {
+        width: 100%;
+        background-color: #6c757d;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-discard:hover { background-color: #5a6268; }
+
+    .btn-buy {
+        width: 100%;
+        background-color: #28a745;
+        color: white;
+        padding: 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+    }
+    .btn-buy:hover { background-color: #218838; }
+
+    /* Modal / Dialog */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-box {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    .modal-box h3 { margin-bottom: 15px; color: #333; }
+    .modal-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .btn-modal-yes {
+        flex: 1;
+        background-color: #28a745;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .btn-modal-no {
+        flex: 1;
+        background-color: #dc3545;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .empty-cart-view {
+        text-align: center;
+        padding: 50px 20px;
+    }
+    .empty-cart-view h3 { color: #555; margin-bottom: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cart-container">
+    <div class="cart-card">
+        <div class="cart-header">
+            <h1 class="cart-title">Your Cart</h1>
+            <a href="{% url 'catalog:shop' %}" class="back-link">← Continue Shopping</a>
+        </div>
+
+        {% if cart_items %}
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th style="text-align: right;">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                        <tr data-product-id="{{ item.product.id }}">
+                            <td class="item-name">{{ item.product.name }}</td>
+                            <td class="item-price">₹{{ item.product.price }}</td>
+                            <td>
+                                <div class="table-stepper">
+                                    <button class="cart-qty-minus" data-product-id="{{ item.product.id }}">−</button>
+                                    <span class="cart-qty-val" id="cart-qty-{{ item.product.id }}">{{ item.quantity }}</span>
+                                    <button class="cart-qty-plus" data-product-id="{{ item.product.id }}">+</button>
+                                </div>
+                            </td>
+                            <td class="line-total" style="text-align: right;" id="line-total-{{ item.product.id }}">
+                                ₹{{ item.line_total }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Summary Breakdown -->
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal">₹{{ totals.subtotal }}</span>
+                </div>
+
+                {% if totals.discount_amount > 0 %}
+                    <div class="summary-row discount">
+                        <span>First Order Discount (10% OFF)</span>
+                        <span id="summary-discount">-₹{{ totals.discount_amount }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="summary-row">
+                    <span>Delivery Charge</span>
+                    <span id="summary-delivery">
+                        {% if totals.is_free_delivery %}
+                            <strong style="color: #28a745;">FREE</strong>
+                        {% else %}
+                            ₹{{ totals.delivery_charge }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="summary-row total">
+                    <span>Final Total</span>
+                    <span id="summary-total">₹{{ totals.total_amount }}</span>
+                </div>
+            </div>
+
+            <!-- Estimated Delivery Time -->
+            {% if delivery_eta %}
+                <div class="eta-box">
+                    <span>🚚</span>
+                    <span>Estimated Delivery: {{ delivery_eta|date:"h:i A" }} – {{ delivery_eta_end|date:"h:i A" }} (Today)</span>
+                </div>
+            {% endif %}
+
+            <!-- Actions: Discard (above Buy), Buy (green, below Discard) -->
+            <div class="cart-actions">
+                <button type="button" id="btn-discard-cart" class="btn-discard">Discard Cart</button>
+                <button type="button" id="btn-buy-now" class="btn-buy">Buy Now</button>
+            </div>
+
+        {% else %}
+            <div class="empty-cart-view">
+                <h3>Your cart is empty!</h3>
+                <a href="{% url 'catalog:shop' %}" class="btn-buy" style="max-width: 250px; margin: 20px auto 0;">Start Shopping</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Confirmation Modal for Buy -->
+<div class="modal-overlay" id="buy-confirm-modal">
+    <div class="modal-box">
+        <h3>Confirmation</h3>
+        <p>Are you sure you want to buy?</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn-modal-yes" id="modal-yes-btn">Yes</button>
+            <button type="button" class="btn-modal-no" id="modal-no-btn">No</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'cart/cart.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "adminpanel/dashboard.html" %}
+{% load static %}
+
+{% block title %}Notifications - Smart Inventory Admin{% endblock %}
+
+{# ── BUG 4 FIX: Override admin_nav — keep brand/nav/profile, remove search bar ── #}
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+    <!-- Right: Profile Icon (no search bar on this page) -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <h1 class="dashboard-title" style="margin-bottom:0;">Notifications</h1>
+            {# ── BUG 5 FIX: Back to Shop link ── #}
+            <a href="{% url 'catalog:shop' %}" class="back-to-shop-btn">← Back to Shop</a>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="?filter=all"
+               class="filter-tab {% if filter_type == 'all' %}filter-tab-active{% endif %}">
+                All
+            </a>
+            <a href="?filter=low_stock"
+               class="filter-tab {% if filter_type == 'low_stock' %}filter-tab-active{% endif %}">
+                🔴 Low Stock
+                {% if low_stock_count > 0 %}({{ low_stock_count }}){% endif %}
+            </a>
+            <a href="?filter=expiry_warning"
+               class="filter-tab {% if filter_type == 'expiry_warning' %}filter-tab-active{% endif %}">
+                🟠 Expiry Warning
+                {% if expiry_warning_count > 0 %}({{ expiry_warning_count }}){% endif %}
+            </a>
+            <a href="?filter=expired"
+               class="filter-tab {% if filter_type == 'expired' %}filter-tab-active{% endif %}">
+                ⚫ Expired
+                {% if expired_count > 0 %}({{ expired_count }}){% endif %}
+            </a>
+        </div>
+    </div>
+
+    <div id="notifications-list">
+        {% for notif in notifications %}
+            <div class="notif-card {% if notif.is_read %}notif-read{% endif %} type-{{ notif.type }}"
+                 id="notif-{{ notif.id }}">
+                <div class="notif-body">
+                    <div class="notif-icon">
+                        {% if notif.type == "low_stock" %}🔴
+                        {% elif notif.type == "expiry_warning" %}🟠
+                        {% else %}⚫{% endif %}
+                    </div>
+                    <div class="notif-text">
+                        <div class="notif-message">{{ notif.message }}</div>
+                        <div class="notif-meta">
+                            <span class="type-badge type-badge-{{ notif.type }}">{{ notif.get_type_display }}</span>
+                            &nbsp;·&nbsp;
+                            <span>{{ notif.created_at|date:"M d, Y — h:i A" }}</span>
+                            &nbsp;·&nbsp;
+                            <span>{{ notif.product.name }}</span>
+                            {# ── BUG 2 FIX: Show current stock quantity for low-stock notifications ── #}
+                            {% if notif.type == "low_stock" %}
+                                &nbsp;·&nbsp;
+                                <span>Current stock: <strong style="color:#dc3545;">{{ notif.product.stock_qty }}</strong> units</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="notif-actions">
+                    {% if not notif.is_read %}
+                        <button
+                            class="btn-mark-read"
+                            data-notif-id="{{ notif.id }}"
+                        >Mark as Read</button>
+                    {% else %}
+                        <span class="read-label">✓ Read</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div style="text-align:center; padding:60px; background:white; border-radius:12px; color:#888;">
+                <p style="font-size:1.1rem;">No notifications found.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .back-to-shop-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .back-to-shop-btn:hover { background-color: #0d0d1a; }
+    .filter-tab {
+        display: inline-block;
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        background-color: #e9ecef;
+        color: #555;
+        transition: background-color 0.15s;
+    }
+    .filter-tab:hover { background-color: #dee2e6; }
+    .filter-tab-active { background-color: #1a1a2e; color: #FFD700; }
+
+    .notif-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: white;
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        border-left: 5px solid #aaa;
+        transition: opacity 0.3s;
+        gap: 12px;
+    }
+    .notif-card.type-low_stock { border-left-color: #dc3545; }
+    .notif-card.type-expiry_warning { border-left-color: #fd7e14; }
+    .notif-card.type-expired { border-left-color: #6c757d; }
+    .notif-card.notif-read { opacity: 0.55; }
+
+    .notif-body { display: flex; align-items: flex-start; gap: 14px; flex: 1; }
+    .notif-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+    .notif-message { font-weight: 600; color: #333; margin-bottom: 4px; }
+    .notif-meta { font-size: 0.8rem; color: #888; }
+    .type-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .type-badge-low_stock { background-color: #f8d7da; color: #721c24; }
+    .type-badge-expiry_warning { background-color: #fff3cd; color: #664d03; }
+    .type-badge-expired { background-color: #e9ecef; color: #495057; }
+
+    .btn-mark-read {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 7px 14px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .btn-mark-read:hover { background-color: #218838; }
+    .read-label {
+        color: #28a745;
+        font-weight: 700;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'adminpanel/adminpanel.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% load static %}
+<!-- Green Floating Cart Bar (spec §3) -->
+<a href="{% url 'cart:view' %}" id="cart-bar" style="{% if not cart_items %}display: none;{% endif %}">
+    🛒 View Your Cart
+</a>
+
+<style>
+    #cart-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #28a745;
+        color: #ffffff;
+        text-align: center;
+        padding: 14px 20px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 -3px 10px rgba(0,0,0,0.2);
+        text-decoration: none;
+        transition: background-color 0.2s, transform 0.2s;
+    }
+
+    #cart-bar:hover {
+        background-color: #218838;
+        color: #ffffff;
+    }
+</style>

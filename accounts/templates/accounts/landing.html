@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Smart Inventory - Welcome{% endblock %}
+
+{% block extra_css %}
+<style>
+    body, html { height: 100%; }
+    .landing-container {
+        background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.6)), url("{% static 'images/shopPhoto.png' %}");
+        background-size: cover;
+        background-position: center;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        color: #ffffff;
+        padding: 20px;
+    }
+    .landing-title {
+        font-size: 3rem;
+        margin-bottom: 10px;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    }
+    .landing-subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 40px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+    }
+    .button-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+        max-width: 320px;
+    }
+    .btn {
+        display: block;
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        text-align: center;
+        transition: transform 0.2s, background-color 0.2s;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-blue { background-color: #007bff; color: #ffffff; border: none; }
+    .btn-blue:hover { background-color: #0056b3; }
+    .btn-red { background-color: #dc3545; color: #ffffff; border: none; }
+    .btn-red:hover { background-color: #bd2130; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-container">
+    <h1 class="landing-title">Smart Inventory</h1>
+    <p class="landing-subtitle">Your one-stop smart shopping portal</p>
+    <div class="button-stack">
+        <a href="{% url 'accounts:login' %}" class="btn btn-blue">Login</a>
+        <a href="{% url 'accounts:register' %}" class="btn btn-red">Sign Up</a>
+    </div>
+</div>
+{% endblock %}

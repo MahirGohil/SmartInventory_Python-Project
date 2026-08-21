@@ -1,0 +1,136 @@
+{% extends "adminpanel/dashboard.html" %}
+{% load static %}
+
+{% block admin_nav %}
+<div class="admin-topbar">
+    <!-- Left: Brand + Nav Buttons -->
+    <div class="admin-nav-left">
+        <a href="{% url 'adminpanel:dashboard' %}" class="brand-badge">⚙ Admin</a>
+        <a href="{% url 'adminpanel:manage_products' %}" class="admin-nav-btn nav-btn-manage">Manage</a>
+        <a href="{% url 'adminpanel:notifications' %}" class="admin-nav-btn nav-btn-notif">
+            Notification
+            {% if unread_notifications > 0 %}
+                <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
+        <a href="{% url 'predictions:sales' %}" class="admin-nav-btn nav-btn-sales">Sales Prediction</a>
+        <a href="{% url 'predictions:stock' %}" class="admin-nav-btn nav-btn-stock">Stock Prediction</a>
+    </div>
+    <!-- Right: Profile Icon (no search bar on this page) -->
+    <a href="{% url 'accounts:profile' %}" class="profile-icon" title="{{ request.user.username }}">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+        {% else %}
+            {{ request.user.username|slice:":1"|upper }}
+        {% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:26px; flex-wrap:wrap;">
+        <a href="{% url 'adminpanel:manage_products' %}" style="color:#007bff; font-weight:600; text-decoration:none;">← Back to Products</a>
+        <h1 class="dashboard-title" style="margin-bottom:0;">Edit Product</h1>
+        {# BUG 5 FIX: Back to Shop #}
+        <a href="{% url 'catalog:shop' %}" class="back-to-shop-btn" style="margin-left:auto;">← Back to Shop</a>
+    </div>
+
+    <div style="max-width:600px; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.07); padding:32px;">
+        <p style="color:#888; font-size:0.85rem; margin-bottom:20px;">
+            Editing: <strong>{{ product.name }}</strong>
+            &nbsp;|&nbsp;
+            <em>Note: Price and Photo are not editable per spec §8.4.
+            To enable, add them to <code>ProductEditForm.Meta.fields</code>.</em>
+        </p>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="form-error-box">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="field-error">{{ field.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <div style="display:flex; gap:12px; margin-top:24px;">
+                <button type="submit" class="btn-submit-form">Save Changes</button>
+                <a href="{% url 'adminpanel:manage_products' %}" class="btn-cancel-form">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #444;
+        font-size: 0.9rem;
+    }
+    .form-group .form-control {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+    }
+    .form-group .form-control:focus { border-color: #007bff; outline: none; }
+    .field-error { color: #dc3545; font-size: 0.82rem; margin-top: 4px; }
+    .form-error-box {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+    }
+    .btn-submit-form {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 28px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+    .btn-submit-form:hover { background-color: #218838; }
+    .btn-cancel-form {
+        background-color: #e9ecef;
+        color: #333;
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-weight: 700;
+        text-decoration: none;
+        font-size: 0.95rem;
+    }
+    .btn-cancel-form:hover { background-color: #dee2e6; }
+    /* BUG 5 FIX: Back to Shop button */
+    .back-to-shop-btn {
+        display: inline-block;
+        padding: 7px 16px;
+        background-color: #1a1a2e;
+        color: #FFD700;
+        border: 1px solid rgba(255,215,0,0.35);
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+    }
+    .back-to-shop-btn:hover { background-color: #0d0d1a; }
+</style>
+{% endblock %}

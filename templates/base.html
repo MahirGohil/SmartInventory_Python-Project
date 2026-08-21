@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Smart Inventory{% endblock %}</title>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            min-height: 100vh;
+        }
+        .messages-container {
+            max-width: 900px;
+            margin: 12px auto 0;
+            padding: 0 20px;
+        }
+        .alert {
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .alert-success { background-color: #d1e7dd; color: #0f5132; }
+        .alert-error   { background-color: #f8d7da; color: #721c24; }
+        .alert-warning { background-color: #fff3cd; color: #664d03; }
+        .alert-info    { background-color: #cff4fc; color: #055160; }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+
+    <!-- Shared CSRF / fetch helper — included before any app-specific JS file -->
+    <script src="{% static 'js/csrf.js' %}"></script>
+</head>
+<body>
+
+    <!-- Admin Nav: only rendered for superusers (spec §8 — admin-only UI) -->
+    {% block admin_nav %}
+        {% if request.user.is_authenticated and request.user.is_superuser %}
+        <div style="background:#1a1a2e; padding:8px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <a href="{% url 'adminpanel:dashboard' %}"
+               style="font-weight:800; color:#FFD700; text-decoration:none; font-size:0.9rem; margin-right:8px;">
+                ⚙ Admin
+            </a>
+            <a href="{% url 'adminpanel:manage_products' %}"
+               style="color:white; text-decoration:none; background:#007bff; padding:5px 12px; border-radius:5px; font-size:0.82rem; font-weight:700;">
+                Manage
+            </a>
+            <a href="{% url 'adminpanel:notifications' %}"
+               style="color:white; text-decoration:none; background:#fd7e14; padding:5px 12px; border-radius:5px; font-size:0.82rem; font-weight:700;">
+                Notification
+            </a>
+            <a href="{% url 'predictions:sales' %}"
+               style="color:white; text-decoration:none; background:#6f42c1; padding:5px 12px; border-radius:5px; font-size:0.82rem; font-weight:700;">
+                Sales Prediction
+            </a>
+            <a href="{% url 'predictions:stock' %}"
+               style="color:white; text-decoration:none; background:#20c997; padding:5px 12px; border-radius:5px; font-size:0.82rem; font-weight:700;">
+                Stock Prediction
+            </a>
+        </div>
+        {% endif %}
+    {% endblock %}
+
+    {% block messages %}
+    {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endblock %}
+
+    <!-- Main Page Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Cart Bar Placeholder -->
+    {% block cart_bar %}{% endblock %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

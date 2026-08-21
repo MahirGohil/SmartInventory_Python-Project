@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Order Confirmation - Smart Inventory{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-container {
+        max-width: 650px;
+        margin: 50px auto;
+        padding: 0 20px;
+    }
+    .confirm-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 40px 30px;
+        text-align: center;
+    }
+    .blue-message-box {
+        background-color: #e7f5ff;
+        border: 2px solid #339af0;
+        color: #1864ab;
+        border-radius: 10px;
+        padding: 24px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 30px;
+        line-height: 1.4;
+    }
+    .order-details-summary {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        text-align: left;
+    }
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 0.95rem;
+        border-bottom: 1px dashed #e0e0e0;
+    }
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+    .actions-stack {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+    .btn-action {
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 700;
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: background-color 0.2s;
+    }
+    .btn-blue {
+        background-color: #007bff;
+        color: white;
+    }
+    .btn-blue:hover { background-color: #0056b3; }
+    .btn-outline {
+        border: 2px solid #007bff;
+        color: #007bff;
+        background: transparent;
+    }
+    .btn-outline:hover {
+        background-color: #007bff;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-container">
+    <div class="confirm-card">
+
+        <!-- Blue Confirmation Message (spec §5.2) -->
+        <div class="blue-message-box">
+            {{ confirmation_message }}
+        </div>
+
+        <div class="order-details-summary">
+            <div class="summary-item">
+                <span>Order Reference:</span>
+                <strong>#{{ order.id }}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Payment Method:</span>
+                <strong>{{ order.payment_method }}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Amount Paid:</span>
+                <strong>₹{{ order.total_amount }}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Estimated Delivery:</span>
+                <strong>Today, {{ order.delivery_eta|date:"h:i A" }}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Delivery Address:</span>
+                <strong>{{ order.formatted_address }}</strong>
+            </div>
+        </div>
+
+        <div class="actions-stack">
+            <a href="{% url 'orders:download_bill' order.id %}" class="btn-action btn-blue" id="download-bill-btn">
+                📄 Download Bill (PDF)
+            </a>
+            <a href="{% url 'catalog:shop' %}" class="btn-action btn-outline">
+                🛒 Continue Shopping
+            </a>
+            <a href="{% url 'orders:order_history' %}" class="btn-action btn-outline">
+                📋 Order History
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if auto_download %}
+<script>
+    // Automatic bill download trigger for UPI purchases (spec §5.2)
+    document.addEventListener("DOMContentLoaded", function() {
+        const downloadUrl = "{% url 'orders:download_bill' order.id %}";
+        setTimeout(function() {
+            window.location.href = downloadUrl;
+        }, 1000);
+    });
+</script>
+{% endif %}
+{% endblock %}
